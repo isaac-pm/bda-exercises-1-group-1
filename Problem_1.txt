@@ -1,53 +1,264 @@
-Part A - Execution Instructions and Key Results (AA subset only)
+# Problem 1 Report
 
-This section documents how to run the Part A solutions using only:
-./Wikipedia-En-41784-Articles/AA/*
+> Make sure the data files are placed in the repository root as `Wikipedia-En-41784-Articles/AA/*`, `Wikipedia-En-41784-Articles/AB/*`, ..., `Wikipedia-En-41784-Articles/AK/*` before running the commands below.
 
-Dataset used
-- Input path: ./Wikipedia-En-41784-Articles/AA/*
-- Number of input files: 100
+## Part A - Execution Instructions and Key Results (AA subset only)
 
-1) Build (from repository root)
+### Objective
+
+Run the three baseline jobs (`HadoopWordCount`, `HadoopWordPairs`, `HadoopWordStripes`) on `AA` only and report runtimes and result sizes.
+
+### Dataset scope
+
+- Input path: `./Wikipedia-En-41784-Articles/AA/*`
+- Number of input files: `100`
+
+### Build commands (from repository root)
 
 Compile Java sources:
+
+```bash
 javac -cp "$(hadoop classpath)" problem_1/*.java
+```
 
 Create/recreate jar:
+
+```bash
 jar -cvf problem_1/HadoopWordCount.jar -C problem_1 .
+```
 
-2) Run each solution (AA only)
+### Run commands (AA only)
 
-2.1 WordCount
+#### 2.1 WordCount
+
+```bash
 rm -rf problem_1/HadoopWordCount_Output_AA
 /usr/bin/time -p hadoop jar problem_1/HadoopWordCount.jar HadoopWordCount "./Wikipedia-En-41784-Articles/AA/*" problem_1/HadoopWordCount_Output_AA
 wc -l problem_1/HadoopWordCount_Output_AA/part-r-00000
+```
 
-2.2 WordPairs
+#### 2.2 WordPairs
+
+```bash
 rm -rf problem_1/HadoopWordPairs_Output_AA
 /usr/bin/time -p hadoop jar problem_1/HadoopWordCount.jar HadoopWordPairs "./Wikipedia-En-41784-Articles/AA/*" problem_1/HadoopWordPairs_Output_AA
 wc -l problem_1/HadoopWordPairs_Output_AA/part-r-00000
+```
 
-2.3 WordStripes
+#### 2.3 WordStripes
+
+```bash
 rm -rf problem_1/HadoopWordStripes_Output_AA
 /usr/bin/time -p hadoop jar problem_1/HadoopWordCount.jar HadoopWordStripes "./Wikipedia-En-41784-Articles/AA/*" problem_1/HadoopWordStripes_Output_AA
 wc -l problem_1/HadoopWordStripes_Output_AA/part-r-00000
+```
 
-3) Most important observed results (AA run)
+### Key results (AA run)
 
-WordCount:
-- Runtime: real 13.21s, user 21.82s, sys 1.10s
-- Number of result rows: 148008
+**WordCount**
 
-WordPairs:
-- Runtime: real 16.35s, user 25.46s, sys 1.42s
-- Number of result rows: 2073042
+- Runtime: `real 13.21s`, `user 21.82s`, `sys 1.10s`
+- Number of result rows: `148008`
 
-WordStripes:
-- Runtime: real 23.54s, user 31.88s, sys 1.22s
-- Number of result rows: 148008
+**WordPairs**
 
-4) Notes
+- Runtime: `real 16.35s`, `user 25.46s`, `sys 1.42s`
+- Number of result rows: `2073042`
+
+**WordStripes**
+
+- Runtime: `real 23.54s`, `user 31.88s`, `sys 1.22s`
+- Number of result rows: `148008`
+
+### Notes
 
 - Runs executed locally with Hadoop LocalJobRunner.
 - WordPairs generates substantially more output rows than WordCount/WordStripes.
 - WordCount and WordStripes produce the same number of key rows here, but different value formats.
+
+---
+
+## Part B - Execution Instructions and Key Results (AA subset only)
+
+### Objective
+
+- (1) Words (not numbers) with total count exactly `1000`.
+- (2) Word pairs (not numbers) with total count exactly `1000`, with neighbor distance `m <= 2`.
+- (3) Top-100 most frequent words (not numbers).
+- (4) Top-100 most frequent pairs where first token is a number and second is a word, with `m <= 2`.
+
+### Dataset scope
+
+- Input path: `./Wikipedia-En-41784-Articles/AA/*`
+- Number of input files: `100`
+
+### Solution strategy
+
+- Implemented in one MapReduce job/class: `HadoopPartB`.
+- No post-processing outside map/reduce for filtering/top-100 logic.
+- One reducer (`setNumReduceTasks(1)`) is used so global top-100 is exact.
+
+### Pair definition clarification
+
+- Pair generation is ordered and forward-only inside each line after token filtering.
+- For token index `i`, neighbors are `i+1` and `i+2` (if present), i.e., distance `m in {1,2}`.
+- No backward pairs and no cross-line pairs are generated.
+- For Task (4), only pairs matching `number:word` in that order are counted.
+
+### Build commands (from repository root)
+
+Compile Java sources:
+
+```bash
+javac -cp "$(hadoop classpath)" problem_1/*.java
+```
+
+Create/recreate jar:
+
+```bash
+jar -cvf problem_1/HadoopWordCount.jar -C problem_1 .
+```
+
+### Run commands (AA only)
+
+```bash
+rm -rf problem_1/HadoopPartB_Output_AA
+/usr/bin/time -p hadoop jar problem_1/HadoopWordCount.jar HadoopPartB "./Wikipedia-En-41784-Articles/AA/*" problem_1/HadoopPartB_Output_AA
+```
+
+### Output format (`part-r-00000`)
+
+- `TASK1\t<word>\t<count>` for (1)
+- `TASK2\t<word1:word2>\t<count>` for (2)
+- `TASK3\t<word>\t<count>` for (3) top-100 words
+- `TASK4\t<number:word>\t<count>` for (4) top-100 number-word pairs
+
+### Key results (AA run)
+
+**Runtime**
+
+- `real 17.56s`
+- `user 24.03s`
+- `sys 1.11s`
+
+**Result counts**
+
+- Task (1): `1` result
+- Task (2): `0` results
+- Task (3): `100` results
+- Task (4): `100` results
+- Total output lines: `201`
+
+**Output examples**
+
+- Task (1): `alternative -> 1000`
+- Top Task (3) entries: `during -> 9592`, `between -> 9459`, `however -> 7473`
+- Top Task (4) entries: `2011:census -> 63`, `2010:census -> 62`, `2015:announced -> 42`
+
+---
+
+## Part C - Step-by-step scalability analysis (AA to AK)
+
+### Objective
+
+Measure scalability of the combined `HadoopPartB` solution by increasing input cumulatively from `AA` to `AK`.
+
+### Dataset scope and method
+
+- Job benchmarked: `HadoopPartB` (the combined Part B solution).
+- Input grows cumulatively by one subdirectory per step: `AA`, `AA+AB`, ..., `AA+...+AK`.
+- For each step, one full MapReduce execution is timed with `/usr/bin/time -p`.
+- Output folder per step: `problem_1/HadoopPartB_Output_<LABEL>`.
+- Generated output contents are ignored via `problem_1/.gitignore`, while each output folder keeps a tracked empty `.gitignore` placeholder.
+
+### Hardware/software setup
+
+- OS: `Linux fedora 6.18.16-200.fc43.x86_64`
+- CPU: `AMD Ryzen 5 5500H with Radeon Graphics`
+- Cores/threads: `4 cores / 8 threads`
+- RAM: `27 GiB`
+- Java: `OpenJDK 21.0.10 LTS`
+- Hadoop: `3.4.2`
+- Execution mode: `Hadoop LocalJobRunner`
+
+### Build commands
+
+```bash
+javac -cp "$(hadoop classpath)" problem_1/*.java
+jar -cvf problem_1/HadoopWordCount.jar -C problem_1 .
+```
+
+### Run commands
+
+Run pattern per step (example `AA+AB+AC`):
+
+```bash
+rm -rf problem_1/HadoopPartB_Output_AA_AC
+/usr/bin/time -p hadoop jar problem_1/HadoopWordCount.jar HadoopPartB "Wikipedia-En-41784-Articles/AA/*,Wikipedia-En-41784-Articles/AB/*,Wikipedia-En-41784-Articles/AC/*" problem_1/HadoopPartB_Output_AA_AC
+```
+
+### Key results (step-by-step runtime)
+
+Columns:
+
+- Step: cumulative subset
+- Files: cumulative number of input files
+- `real/user/sys`: seconds from `/usr/bin/time -p`
+- `Task1..Task4`: number of output lines for each Part B task
+
+1) AA (100 files): real 18.83, user 25.77, sys 1.30, Task1=1, Task2=0, Task3=100, Task4=100
+2) AA..AB (200 files): real 32.83, user 39.38, sys 1.94, Task1=1, Task2=0, Task3=100, Task4=100
+3) AA..AC (300 files): real 47.94, user 55.35, sys 2.83, Task1=2, Task2=0, Task3=100, Task4=100
+4) AA..AD (400 files): real 63.96, user 72.71, sys 3.19, Task1=2, Task2=0, Task3=100, Task4=100
+5) AA..AE (500 files): real 78.98, user 86.30, sys 3.97, Task1=1, Task2=1, Task3=100, Task4=100
+6) AA..AF (600 files): real 99.05, user 107.14, sys 4.71, Task1=5, Task2=0, Task3=100, Task4=100
+7) AA..AG (700 files): real 110.03, user 118.48, sys 5.53, Task1=6, Task2=0, Task3=100, Task4=100
+8) AA..AH (800 files): real 124.10, user 131.41, sys 5.88, Task1=5, Task2=0, Task3=100, Task4=100
+9) AA..AI (900 files): real 140.21, user 148.93, sys 7.00, Task1=4, Task2=1, Task3=100, Task4=100
+10) AA..AJ (1000 files): real 154.25, user 163.90, sys 7.65, Task1=3, Task2=0, Task3=100, Task4=100
+11) AA..AK (1060 files): real 163.29, user 172.84, sys 7.87, Task1=2, Task2=0, Task3=100, Task4=100
+
+### Final full-scope outputs (AA..AK)
+
+- Total output lines: `202`
+- Task (1): `2` matches (`advancing`, `productive`)
+- Task (2): `0` matches
+- Task (3): `100` entries (top-100 words)
+- Task (4): `100` entries (top-100 number:word pairs)
+
+### Notes and scalability conclusions
+
+- Runtime growth is close to linear with input size in this local setup.
+- From `100` to `1060` files, runtime increases from `18.83s` to `163.29s` (~`8.67x`), while input size increases ~`10.6x`.
+- This indicates good practical scalability for the implemented combined single-job approach.
+- Small deviations from perfect linearity are expected due to LocalJobRunner overheads, filesystem caching, and changing token distributions.
+- Global top-100 correctness is preserved at all scales because a single reducer is used.
+
+---
+
+## AI Workflow and Prompting Summary
+
+### Platform and model
+
+- AI platform used: **OpenCode Agentic mode**
+- Model used: **GPT-5.3-Codex**
+
+### Execution workflow used
+
+- Reviewed and updated Java source files in `problem_1/`.
+- Recompiled code with `javac -cp "$(hadoop classpath)" problem_1/*.java`.
+- Rebuilt jar with `jar -cvf problem_1/HadoopWordCount.jar -C problem_1 .`.
+- Executed Hadoop jobs locally (`hadoop jar ...`) and measured runtimes using `/usr/bin/time -p`.
+- Counted/validated outputs from `part-r-00000` and recorded results in this report.
+- Maintained local output folders with tracked empty `.gitignore` placeholders and ignored generated contents.
+
+### Most important prompting steps and delivered solution
+
+- **Part A prompt intent:** run existing solutions on `AA` and report core metrics.
+  - Delivered: execution commands, runtimes, and output sizes for WordCount, WordPairs, and WordStripes.
+
+- **Part B prompt intent:** solve tasks (1)-(4) with as few MapReduce jobs as possible and keep pair-distance definition explicit.
+  - Delivered: one combined job `HadoopPartB` that computes all tasks in a single run; pair logic clarified as ordered forward neighbors with `m <= 2`.
+
+- **Part C prompt intent:** benchmark scalability by incrementally adding subdirectories from `AA` to `AK`, then conclude on scalability.
+  - Delivered: 11-step cumulative benchmark, hardware/software setup, runtime table, output counts per task, and scalability interpretation.

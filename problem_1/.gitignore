@@ -5,3 +5,5 @@ HadoopWordPairs_Output_AA/**
 !HadoopWordPairs_Output_AA/.gitignore
 HadoopWordStripes_Output_AA/**
 !HadoopWordStripes_Output_AA/.gitignore
+HadoopPartB_Output_*/**
+!HadoopPartB_Output_*/.gitignore
