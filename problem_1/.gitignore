@@ -1,0 +1,7 @@
+# Local Hadoop outputs (keep folder placeholders)
+HadoopWordCount_Output_AA/**
+!HadoopWordCount_Output_AA/.gitignore
+HadoopWordPairs_Output_AA/**
+!HadoopWordPairs_Output_AA/.gitignore
+HadoopWordStripes_Output_AA/**
+!HadoopWordStripes_Output_AA/.gitignore

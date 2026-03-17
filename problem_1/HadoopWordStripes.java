@@ -1,5 +1,8 @@
 import java.io.IOException;
-import java.util.Iterator;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.regex.Pattern;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
@@ -22,6 +25,27 @@ import org.apache.hadoop.util.ToolRunner;
 public class HadoopWordStripes extends Configured implements Tool {
 
 	private final static IntWritable one = new IntWritable(1);
+	private static final Pattern SPLIT_PATTERN = Pattern.compile("[^a-z0-9.-]+");
+	private static final Pattern WORD_PATTERN = Pattern.compile("[a-z-]{6,24}");
+	private static final Pattern NUMBER_PATTERN = Pattern.compile("-?[0-9.]{4,16}");
+
+	private static List<String> extractValidTokens(String line) {
+		String lowerLine = line.toLowerCase(Locale.ROOT);
+		String[] rawTokens = SPLIT_PATTERN.split(lowerLine);
+		List<String> validTokens = new ArrayList<String>();
+
+		for (String rawToken : rawTokens) {
+			if (rawToken.isEmpty()) {
+				continue;
+			}
+
+			if (WORD_PATTERN.matcher(rawToken).matches() || NUMBER_PATTERN.matcher(rawToken).matches()) {
+				validTokens.add(rawToken);
+			}
+		}
+
+		return validTokens;
+	}
 
 	public static class Stripe extends MapWritable {
 
@@ -56,25 +80,25 @@ public class HadoopWordStripes extends Configured implements Tool {
 
 		@Override
 		public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
-			
-			String[] splitLine = value.toString().split(" ");
+			List<String> tokens = extractValidTokens(value.toString());
 
-			for (int i = 0; i < splitLine.length; i++) {
+			for (int i = 0; i < tokens.size(); i++) {
 				
 				Stripe stripe = new Stripe();
-				String w;
+				String currentToken = tokens.get(i);
+				String neighbor;
 
 				if (i > 0) {
-					w = splitLine[i - 1];
-					stripe.add(w);
+					neighbor = tokens.get(i - 1);
+					stripe.add(neighbor);
 				}
 
-				if (i < splitLine.length - 1) {
-					w = splitLine[i + 1];
-					stripe.add(w);
+				if (i < tokens.size() - 1) {
+					neighbor = tokens.get(i + 1);
+					stripe.add(neighbor);
 				}
 
-				context.write(new Text(splitLine[i]), stripe);
+				context.write(new Text(currentToken), stripe);
 			}
 		}
 	}

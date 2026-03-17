@@ -1,0 +1,53 @@
+Part A - Execution Instructions and Key Results (AA subset only)
+
+This section documents how to run the Part A solutions using only:
+./Wikipedia-En-41784-Articles/AA/*
+
+Dataset used
+- Input path: ./Wikipedia-En-41784-Articles/AA/*
+- Number of input files: 100
+
+1) Build (from repository root)
+
+Compile Java sources:
+javac -cp "$(hadoop classpath)" problem_1/*.java
+
+Create/recreate jar:
+jar -cvf problem_1/HadoopWordCount.jar -C problem_1 .
+
+2) Run each solution (AA only)
+
+2.1 WordCount
+rm -rf problem_1/HadoopWordCount_Output_AA
+/usr/bin/time -p hadoop jar problem_1/HadoopWordCount.jar HadoopWordCount "./Wikipedia-En-41784-Articles/AA/*" problem_1/HadoopWordCount_Output_AA
+wc -l problem_1/HadoopWordCount_Output_AA/part-r-00000
+
+2.2 WordPairs
+rm -rf problem_1/HadoopWordPairs_Output_AA
+/usr/bin/time -p hadoop jar problem_1/HadoopWordCount.jar HadoopWordPairs "./Wikipedia-En-41784-Articles/AA/*" problem_1/HadoopWordPairs_Output_AA
+wc -l problem_1/HadoopWordPairs_Output_AA/part-r-00000
+
+2.3 WordStripes
+rm -rf problem_1/HadoopWordStripes_Output_AA
+/usr/bin/time -p hadoop jar problem_1/HadoopWordCount.jar HadoopWordStripes "./Wikipedia-En-41784-Articles/AA/*" problem_1/HadoopWordStripes_Output_AA
+wc -l problem_1/HadoopWordStripes_Output_AA/part-r-00000
+
+3) Most important observed results (AA run)
+
+WordCount:
+- Runtime: real 13.21s, user 21.82s, sys 1.10s
+- Number of result rows: 148008
+
+WordPairs:
+- Runtime: real 16.35s, user 25.46s, sys 1.42s
+- Number of result rows: 2073042
+
+WordStripes:
+- Runtime: real 23.54s, user 31.88s, sys 1.22s
+- Number of result rows: 148008
+
+4) Notes
+
+- Runs executed locally with Hadoop LocalJobRunner.
+- WordPairs generates substantially more output rows than WordCount/WordStripes.
+- WordCount and WordStripes produce the same number of key rows here, but different value formats.

@@ -5,20 +5,15 @@
 .DS_Store
 Thumbs.db
 
-# Java artifacts
-*.class
-*.jar
-
-# Java/runtime logs
-*.log
-hs_err_pid*
-replay_pid*
-
 # Optional build dirs
 out/
 build/
 target/
 
-# Large dataset directory
-Wikipedia-En-41784-Articles/**
-!Wikipedia-En-41784-Articles/.gitignore
+# Java artifacts
+*.class
+*.jar
+
+# logs
+*.log
+*.time
