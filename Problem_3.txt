@@ -8,7 +8,7 @@
 Execute the PySpark and Spark SQL operations required to analyze the Titanic dataset, including UDAF implementation, DataFrame filtering, and statistical aggregations.
 
 ### Hardware/software setup
-- Execution mode: `Local Jupyter Notebook` (PySpark)
+- Execution mode: `Google Colab Jupyter Notebook` (PySpark)
 - Python Version: `3.10.12`
 - Spark Version: `4.0.2`
 - Environment: `Google Colab instance`
