@@ -1,0 +1,94 @@
+# Problem 3 Report
+
+> Make sure the dataset file `titanic.csv` is placed in the exact same directory as the `notebook.ipynb` file before running the notebook.
+
+## General Setup and Execution
+
+### Objective
+Execute the PySpark and Spark SQL operations required to analyze the Titanic dataset, including UDAF implementation, DataFrame filtering, and statistical aggregations.
+
+### Hardware/software setup
+- Execution mode: `Local Jupyter Notebook` (PySpark)
+- Python Version: `3.10.12`
+- Spark Version: `4.0.2`
+- Environment: `Google Colab instance`
+
+### Run commands
+Start the Jupyter Notebook environment:
+```bash
+Load the notebook into google colab instance
+```
+Once opened, select **Kernel -> Restart & Run All** to execute all cells sequentially.
+
+---
+
+## Part A - Median Age Computation
+
+### Objective
+Create a user-defined function (`MedianAge`) to compute the median passenger age, automatically replacing null entries with `23` during the calculation.
+
+### Solution strategy
+- Implemented using a PySpark `@pandas_udf` (Pandas User-Defined Function).
+- Modern PySpark uses Apache Arrow to vectorize operations. A Pandas UDF is significantly more memory-efficient and faster for aggregations than standard row-by-row Python UDFs.
+- Handled nulls internally using Pandas `.fillna(23)` before applying the median calculation.
+
+### Key results
+- Calculated Median Age: `24.0`
+
+---
+
+## Part B - Filtering Passengers
+
+### Objective
+Select the `Name` and `Fare` of all passengers whose age is strictly greater than the computed median age from Part A, using only built-in DataFrame/SQL operations.
+
+### Solution strategy
+- Used the DataFrame API `filter()` and `select()` methods.
+- Applied the `coalesce` function to ensure consistency with Part A: any null ages were evaluated as `23` during the filtering condition to prevent missing data from causing false negatives in the comparison.
+
+### Key results
+- The query successfully returns a filtered DataFrame. 
+- Output displays the top 20 rows of passengers strictly older than 24.0.
+
+---
+
+## Part C - Hypothesis Verification
+
+### Objective
+Verify the hypothesis: *"The average fare price of passengers who survived the sinking of the Titanic is not very different from the average fare price of passengers who did not survive."*
+
+### Solution strategy
+- Used PySpark DataFrame aggregations: `groupBy("Survived").agg(avg("Fare"))`.
+- Evaluated the resulting averages using a simple numeric comparison as permitted by the exercise instructions.
+
+### Key results
+- Average fare for Survivors (`Survived = 1`): `~48.40`
+- Average fare for Non-Survivors (`Survived = 0`): `~22.12`
+
+### Conclusion
+**The hypothesis is REJECTED.** There is a significant and clearly observable difference between the two groups. Survivors paid, on average, more than double the fare of non-survivors. Therefore, the statement that the average fares are "not very different" is demonstrably false.
+
+---
+
+## AI Workflow and Prompting Summary
+
+### Platform and model
+- AI platform used: **Google Gemini**
+- Model used: **Gemini Advanced (Pro)**
+
+### Execution workflow used
+- Cleaned the initial Jupyter Notebook to remove redundant `.collect()` loops and hardcoded paths that would break cross-platform execution.
+- Implemented PySpark code in `notebook.ipynb`.
+- Ran the dataset locally to extract exact numeric metrics (24.0, 48.40, 22.12).
+- Drafted this final Markdown report to map the execution strategy and statistical conclusions.
+
+### Most important prompting steps and delivered solution
+
+- **Part A prompt intent:** Compute median age replacing nulls with 23 using a PySpark UDF.
+  - Delivered: A highly optimized `@pandas_udf` implementation, avoiding the severe performance bottlenecks of standard Python UDFs.
+
+- **Part B prompt intent:** Implement a DataFrame query to filter passengers older than the median.
+  - Delivered: DataFrame `filter()` and `coalesce()` logic, ensuring nulls were treated as 23 during the comparison to maintain logical consistency with Part A.
+
+- **Part C prompt intent:** Calculate average fares grouped by survival status to test the hypothesis and write a concise conclusion.
+  - Delivered: Aggregation logic and a clear statistical justification rejecting the hypothesis based on the 2x difference in average fares.
