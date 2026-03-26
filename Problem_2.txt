@@ -2,47 +2,47 @@
 
 > Make sure the data files are placed in the repository root as `Wikipedia-En-41784-Articles/AA`, `Wikipedia-En-41784-Articles/AB`, ..., `Wikipedia-En-41784-Articles/AK` before running the commands below.
 
-## Execution Instructions and Key Results
+## Part A - Execution Instructions and Key Results (AA subset only)
 
 ### Objective
 
-Repeat the extended word counting tasks from Problem 1 in Apache Spark based on the provided `SparkWordCount.scala` style:
+Repeat Problem 1 in Apache Spark based on the provided `SparkWordCount.scala` style:
 
-- (1) Find all individual words with total count exactly `1000`
-- (2) Find all word pairs with total count exactly `1000`, using ordered forward neighbors with distance `m <= 2`
-- (3) Find the top-100 most frequent individual words
+- (1) Find all individual words (not numbers) with total count exactly `1000`
+- (2) Find all word pairs (not numbers) with total count exactly `1000`, using ordered forward neighbors with distance `m <= 2`
+- (3) Find the top-100 most frequent individual words (not numbers)
 - (4) Find the top-100 most frequent `number:word` pairs, again with `m <= 2`
 
 ### Dataset scope
 
-- Primary AA run input: `./Wikipedia-En-41784-Articles/AA`
-- Number of input files in `AA`: `100`
-- Scalability input growth: cumulative addition of `AB`, `AC`, ..., `AK` until the full `AA..AK` scope with `1060` files
+- Input path: `./Wikipedia-En-41784-Articles/AA`
+- Number of input files: `100`
 
 ### Solution strategy
 
-- Implemented in one Spark application: `SparkProblem2`
-- Based on `SparkConf`, `SparkContext`, recursive directory scan, and `sc.textFile(inputPath)`
-- Tokenization is done per line after converting each line to lower case
-- Valid token types:
-  - words: lower-case `a-z` and `-`, length `6..24`
-  - numbers: digits `0-9`, decimal separator `.`, optional leading `-`, length `4..16`
-- Pair generation is ordered and forward-only inside each line after token filtering
-- For token index `i`, neighbors are only `i+1` and `i+2`
-- No backward pairs and no cross-line pairs are generated
-- Task (4) counts only `number:word` pairs in that exact order
-- Counting is done with `reduceByKey`
+- Implemented in one Spark application/class: `SparkProblem2`
+- Based on `SparkConf`, `SparkContext`, recursive input scan, and `sc.textFile(inputPath)`
+- No processing outside Spark is used for the actual task logic
+- All counting is done with `reduceByKey`
 - Exact top-100 results are computed directly in Spark
-- No shell post-processing is used for the actual task logic
+- Pair generation is done inside each line after token filtering
 
-### Pair definition clarification
+### Token and pair definition clarification
 
+- Each line is first converted to lower case
+- The tokenizer splits on non-word separators
+- Valid word tokens:
+  - lower-case `a-z` and `-`
+  - length `6..24`
+- Valid number tokens:
+  - digits `0-9` and `.`
+  - optional leading `-`
+  - length `4..16`
 - Pair generation is ordered and forward-only inside each line after token filtering
-- For token index `i`, neighbors are `i+1` and `i+2` if present
-- Distance is therefore `m in {1,2}`
+- For token index `i`, neighbors are `i+1` and `i+2` if present, so `m in {1,2}`
 - No backward pairs are emitted
 - No pairs are emitted across different lines
-- For Task (4), only `number:word` pairs are counted
+- For Task (4), only pairs matching `number:word` in that exact order are counted
 
 ### Build commands (from repository root)
 
@@ -50,3 +50,182 @@ Compile Scala source:
 
 ```bash
 scalac -classpath "$(echo "$SPARK_HOME"/jars/*.jar | tr ' ' ':')" -d problem_2/out problem_2/src/SparkProblem2.scala
+```
+
+Create/recreate jar:
+
+```bash
+jar -cvf problem_2/SparkProblem2.jar -C problem_2/out .
+```
+
+### Run commands (AA only)
+
+```bash
+rm -rf problem_2/test_output/problem2_full_AA
+/usr/bin/time -p spark-submit --master local[*] --class SparkProblem2 problem_2/SparkProblem2.jar ./Wikipedia-En-41784-Articles/AA problem_2/test_output/problem2_full_AA
+```
+
+### Output format (`part-00000`)
+
+- `TASK1\t<word>\t<count>` for (1)
+- `TASK2\t<word1:word2>\t<count>` for (2)
+- `TASK3\t<word>\t<count>` for (3) top-100 words
+- `TASK4\t<number:word>\t<count>` for (4) top-100 number-word pairs
+
+### Key results (AA run)
+
+**Runtime**
+
+- `real 7.37s`
+- `user 81.58s`
+- `sys 5.84s`
+
+**Result counts**
+
+- Task (1): `1` result
+- Task (2): `0` results
+- Task (3): `100` results
+- Task (4): `100` results
+- Total output lines: `201`
+
+### Notes
+
+- Spark ran locally with `spark-submit --master local[*]`
+- The final result was written to `problem_2/test_output/problem2_full_AA/part-00000`
+- The Spark solution produces the same task counts as the Hadoop solution on `AA`
+
+---
+
+## Part B - Step-by-step scalability analysis (AA to AK)
+
+### Objective
+
+Measure scalability of the combined `SparkProblem2` solution by increasing input cumulatively from `AA` to `AK`.
+
+### Dataset scope and method
+
+- Job benchmarked: `SparkProblem2`
+- Input grows cumulatively by one subdirectory per step: `AA`, `AA+AB`, ..., `AA+...+AK`
+- For each step, one full Spark execution is timed with `/usr/bin/time -p`
+- Output folder per step: `problem_2/test_output/problem2_<LABEL>`
+- Benchmark summary file: `problem_2/benchmark_logs/problem2_scalability.tsv`
+
+### Hardware/software setup
+
+- OS: `Linux 6.6.87.2-microsoft-standard-WSL2`
+- CPU: `AMD Ryzen 5 5500H with Radeon Graphics`
+- Cores/threads: `4 cores / 8 threads`
+- RAM: `27 GiB`
+- Java: `OpenJDK 21.0.10 LTS`
+- Scala: `2.13.16`
+- Hadoop: `3.4.2`
+- Spark: `4.0.2`
+- Execution mode: `Spark local[*]`
+
+### Build commands
+
+```bash
+scalac -classpath "$(echo "$SPARK_HOME"/jars/*.jar | tr ' ' ':')" -d problem_2/out problem_2/src/SparkProblem2.scala
+jar -cvf problem_2/SparkProblem2.jar -C problem_2/out .
+```
+
+### Run commands
+
+Run the full cumulative benchmark with the provided script:
+
+```bash
+cd problem_2
+./run_problem2_scalability.sh
+```
+
+### What the script does
+
+The script automates the full scalability experiment. It:
+
+- iterates cumulatively through `AA`, `AB`, ..., `AK`
+- builds the corresponding Spark input path list for each step
+- counts how many input files are included at that step
+- removes any previous output directory for that step
+- runs one timed `spark-submit` execution
+- stores the raw timing output in `benchmark_logs/<LABEL>.time`
+- counts how many lines belong to `TASK1`, `TASK2`, `TASK3`, and `TASK4`
+- writes the final summary table to `benchmark_logs/problem2_scalability.tsv`
+
+This avoids running each cumulative case manually.
+
+### Key results (step-by-step runtime)
+
+Columns:
+
+- Step: cumulative subset
+- Files: cumulative number of input files
+- `real/user/sys`: seconds from `/usr/bin/time -p`
+- `Task1..Task4`: number of output lines for each Spark task
+
+1) AA (100 files): real 7.37, user 81.58, sys 5.84, Task1=1, Task2=0, Task3=100, Task4=100  
+2) AA..AB (200 files): real 10.51, user 136.27, sys 9.74, Task1=1, Task2=0, Task3=100, Task4=100  
+3) AA..AC (300 files): real 13.57, user 186.49, sys 11.87, Task1=2, Task2=0, Task3=100, Task4=100  
+4) AA..AD (400 files): real 17.60, user 242.62, sys 19.81, Task1=2, Task2=0, Task3=100, Task4=100  
+5) AA..AE (500 files): real 20.45, user 289.06, sys 21.87, Task1=1, Task2=1, Task3=100, Task4=100  
+6) AA..AF (600 files): real 23.98, user 343.54, sys 25.87, Task1=5, Task2=0, Task3=100, Task4=100  
+7) AA..AG (700 files): real 26.14, user 379.51, sys 29.85, Task1=6, Task2=0, Task3=100, Task4=100  
+8) AA..AH (800 files): real 29.22, user 432.02, sys 33.14, Task1=5, Task2=0, Task3=100, Task4=100  
+9) AA..AI (900 files): real 32.86, user 489.43, sys 38.26, Task1=4, Task2=1, Task3=100, Task4=100  
+10) AA..AJ (1000 files): real 36.56, user 545.44, sys 46.85, Task1=3, Task2=0, Task3=100, Task4=100  
+11) AA..AK (1060 files): real 38.14, user 565.16, sys 49.10, Task1=2, Task2=0, Task3=100, Task4=100
+
+### Final full-scope outputs (AA..AK)
+
+- Total output lines: `202`
+- Task (1): `2` matches
+- Task (2): `0` matches
+- Task (3): `100` entries
+- Task (4): `100` entries
+
+### Notes and scalability conclusions
+
+- Runtime grows smoothly as more subdirectories are added
+- From `100` to `1060` files, runtime increases from `7.37s` to `38.14s`
+- This indicates good practical scalability for the Spark solution in local mode
+- Task (3) and Task (4) remain stable at exactly `100` outputs for all steps
+- Task (1) and Task (2) vary with the growing corpus, which is expected
+- Exact top-100 correctness is preserved because the final ranking is computed directly in Spark
+
+---
+
+## AI Workflow and Prompting Summary
+
+### Platform and model
+
+- AI platform used: **ChatGPT**
+- Model used: **GPT-5.4 Thinking**
+
+### Execution workflow used
+
+- Reviewed the exercise sheet requirements for Problem 2
+- Matched the report style to `Problem_1.txt`
+- Refined the Spark solution structure and pair semantics
+- Verified the tokenizer and filtering rules
+- Built the final Scala Spark source and jar locally
+- Executed Spark jobs with `spark-submit`
+- Measured runtimes with `/usr/bin/time -p`
+- Validated task counts from `part-00000`
+- Automated the cumulative AA..AK benchmark with `run_problem2_scalability.sh`
+- Drafted the final `Problem_2.txt` report
+
+### Most important prompting steps and delivered solution
+
+- **Initial prompt intent:** design a complete Spark solution for Problem 2 using the provided Spark style
+  - Delivered: one Spark RDD-based solution using `SparkConf`, `SparkContext`, recursive directory scan, and `sc.textFile`
+
+- **Tokenizer and filtering prompt intent:** apply the exact word and number rules before pair generation
+  - Delivered: lower-case normalization, token filtering, and typed token classification
+
+- **Pair-generation prompt intent:** keep pair semantics explicit and deterministic
+  - Delivered: ordered forward-only pairs inside each line, using only distances `1` and `2`, with no cross-line pairs
+
+- **Aggregation prompt intent:** solve tasks (1)-(4) with as few Spark transformations as practical
+  - Delivered: one combined Spark application using `reduceByKey` for counting and direct Spark logic for exact top-100 extraction
+
+- **Benchmark prompt intent:** measure scalability from `AA` to `AK` and summarize the results
+  - Delivered: cumulative benchmark script, runtime table, final task counts, and scalability conclusions
