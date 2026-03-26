@@ -1,0 +1,52 @@
+# Problem 2 Report
+
+> Make sure the data files are placed in the repository root as `Wikipedia-En-41784-Articles/AA`, `Wikipedia-En-41784-Articles/AB`, ..., `Wikipedia-En-41784-Articles/AK` before running the commands below.
+
+## Execution Instructions and Key Results
+
+### Objective
+
+Repeat the extended word counting tasks from Problem 1 in Apache Spark based on the provided `SparkWordCount.scala` style:
+
+- (1) Find all individual words with total count exactly `1000`
+- (2) Find all word pairs with total count exactly `1000`, using ordered forward neighbors with distance `m <= 2`
+- (3) Find the top-100 most frequent individual words
+- (4) Find the top-100 most frequent `number:word` pairs, again with `m <= 2`
+
+### Dataset scope
+
+- Primary AA run input: `./Wikipedia-En-41784-Articles/AA`
+- Number of input files in `AA`: `100`
+- Scalability input growth: cumulative addition of `AB`, `AC`, ..., `AK` until the full `AA..AK` scope with `1060` files
+
+### Solution strategy
+
+- Implemented in one Spark application: `SparkProblem2`
+- Based on `SparkConf`, `SparkContext`, recursive directory scan, and `sc.textFile(inputPath)`
+- Tokenization is done per line after converting each line to lower case
+- Valid token types:
+  - words: lower-case `a-z` and `-`, length `6..24`
+  - numbers: digits `0-9`, decimal separator `.`, optional leading `-`, length `4..16`
+- Pair generation is ordered and forward-only inside each line after token filtering
+- For token index `i`, neighbors are only `i+1` and `i+2`
+- No backward pairs and no cross-line pairs are generated
+- Task (4) counts only `number:word` pairs in that exact order
+- Counting is done with `reduceByKey`
+- Exact top-100 results are computed directly in Spark
+- No shell post-processing is used for the actual task logic
+
+### Pair definition clarification
+
+- Pair generation is ordered and forward-only inside each line after token filtering
+- For token index `i`, neighbors are `i+1` and `i+2` if present
+- Distance is therefore `m in {1,2}`
+- No backward pairs are emitted
+- No pairs are emitted across different lines
+- For Task (4), only `number:word` pairs are counted
+
+### Build commands (from repository root)
+
+Compile Scala source:
+
+```bash
+scalac -classpath "$(echo "$SPARK_HOME"/jars/*.jar | tr ' ' ':')" -d problem_2/out problem_2/src/SparkProblem2.scala

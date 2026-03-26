@@ -1,0 +1,86 @@
+import org.apache.spark.{SparkConf, SparkContext}
+import org.apache.spark.SparkContext._
+
+object SparkProblem2 {
+
+  sealed trait TokenType
+  case object WordToken extends TokenType
+  case object NumberToken extends TokenType
+
+  case class TypedToken(value: String, tokenType: TokenType)
+
+  def isWord(token: String): Boolean = {
+    token.length >= 6 &&
+    token.length <= 24 &&
+    token.forall(c => (c >= 'a' && c <= 'z') || c == '-')
+  }
+
+  def isNumber(token: String): Boolean = {
+    if (token.length < 4 || token.length > 16) return false
+
+    val body =
+      if (token.startsWith("-")) {
+        if (token.length == 1) return false
+        token.substring(1)
+      } else {
+        token
+      }
+
+    body.nonEmpty && body.forall(c => (c >= '0' && c <= '9') || c == '.')
+  }
+
+  def classify(token: String): Option[TypedToken] = {
+    if (isWord(token)) Some(TypedToken(token, WordToken))
+    else if (isNumber(token)) Some(TypedToken(token, NumberToken))
+    else None
+  }
+
+  def tokenizeAndFilter(line: String): Array[TypedToken] = {
+    line
+      .toLowerCase
+      .split("[^a-z0-9.-]+")
+      .filter(_.nonEmpty)
+      .flatMap(classify)
+  }
+
+  def main(args: Array[String]): Unit = {
+    if (args.length < 2) {
+      System.err.println("Correct arguments: <input-directory> <output-directory>")
+      System.exit(1)
+    }
+
+    val sc = new SparkContext(new SparkConf().setAppName("SparkProblem2"))
+
+    sc.hadoopConfiguration.set("mapreduce.input.fileinputformat.input.dir.recursive", "true")
+
+    val textFile = sc.textFile(args(0))
+
+    val typedTokens = textFile.flatMap(line => tokenizeAndFilter(line))
+
+    val wordCount = typedTokens.filter(_.tokenType == WordToken).count()
+    val numberCount = typedTokens.filter(_.tokenType == NumberToken).count()
+
+    val preview = typedTokens.take(20)
+
+    println(s"VALID_WORD_TOKENS=$wordCount")
+    println(s"VALID_NUMBER_TOKENS=$numberCount")
+
+    preview.zipWithIndex.foreach { case (tok, idx) =>
+      val kind = tok.tokenType match {
+        case WordToken   => "WORD"
+        case NumberToken => "NUMBER"
+      }
+      println(s"TOKEN_${idx + 1}=$kind\t${tok.value}")
+    }
+
+    sc.parallelize(
+      Seq(
+        s"VALID_WORD_TOKENS=$wordCount",
+        s"VALID_NUMBER_TOKENS=$numberCount"
+      ),
+      1
+    ).saveAsTextFile(args(1))
+
+    sc.stop()
+  }
+}

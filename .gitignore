@@ -1,6 +1,9 @@
 .vscode/
 .metals/
 
+#Database
+Wikipedia-En-41784-Articles/*
+
 # OS noise
 .DS_Store
 Thumbs.db
